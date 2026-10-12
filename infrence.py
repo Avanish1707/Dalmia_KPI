@@ -10,7 +10,7 @@ MODEL_PATH = r"C:\Users\singh.neeraj\OneDrive - DALMIA BHARAT LIMITED\Desktop\of
 RTSP_URL = "rtsp://admin:abc123!@@192.168.191.40:554/Streaming/channels/101"
 
 CONFIDENCE = 0.45
-CHAIR_CONFIDENCE = 0.70
+CHAIR_CONFIDENCE = 0.60
 
 print("[INFO] Loading YOLO model...")
 model = YOLO(MODEL_PATH)
@@ -43,7 +43,7 @@ try:
         results = model.predict(
             source=frame,
             conf=CONFIDENCE,
-            imgsz=1240,
+            imgsz=640,
             verbose=False
         )
 
