@@ -10,6 +10,7 @@ MODEL_PATH = r"C:\Users\singh.neeraj\OneDrive - DALMIA BHARAT LIMITED\Desktop\of
 RTSP_URL = "rtsp://admin:abc123!@@192.168.191.40:554/Streaming/channels/101"
 
 CONFIDENCE = 0.45
+CHAIR_CONFIDENCE = 0.70
 
 print("[INFO] Loading YOLO model...")
 model = YOLO(MODEL_PATH)
@@ -62,8 +63,12 @@ try:
                 has_person = "person" in normalized_name
                 has_chair = "chair" in normalized_name
                 has_without = "without" in normalized_name
+                is_person_with_chair = has_person and has_chair and not has_without
 
-                if has_person and has_chair:
+                if is_person_with_chair and confidence < CHAIR_CONFIDENCE:
+                    continue
+
+                if is_person_with_chair:
                     chair_states[class_name] = max(
                         chair_states.get(class_name, 0.0), float(confidence)
                     )
@@ -85,7 +90,7 @@ try:
                 color = (
                     (255, 160, 0)
                     if has_without
-                    else (0, 200, 0) if has_person and has_chair else (255, 160, 0)
+                    else (0, 200, 0) if is_person_with_chair else (255, 160, 0)
                 )
                 output[mask_area] = (
                     output[mask_area].astype(np.float32) * 0.55
