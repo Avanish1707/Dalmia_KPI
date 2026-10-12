@@ -1,16 +1,14 @@
-
 import cv2
 import time
 from ultralytics import YOLO
 
 # -------- CONFIGURATION --------
-MODEL_PATH = r"best.pt"  # Change to your model path
+MODEL_PATH = r"C:\Users\singh.neeraj\OneDrive - DALMIA BHARAT LIMITED\Desktop\office\Dalmia_KPI\best.pt"  # Change to your model path
 
 # Replace with the actual RTSP URL from your camera
-RTSP_URL = "rtsp://USERNAME:PASSWORD@192.168.191.40:554/STREAM_PATH"
+RTSP_URL = "rtsp://admin:abc123@@192.168.191.40:554/Streaming/channels/101"
 
 CONFIDENCE = 0.25
-# -------------------------------
 
 print("[INFO] Loading YOLO model...")
 model = YOLO(MODEL_PATH)
