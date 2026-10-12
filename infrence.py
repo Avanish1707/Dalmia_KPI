@@ -8,7 +8,7 @@ MODEL_PATH = r"C:\Users\singh.neeraj\OneDrive - DALMIA BHARAT LIMITED\Desktop\of
 # Replace with the actual RTSP URL from your camera
 RTSP_URL = "rtsp://admin:abc123!@@192.168.191.40:554/Streaming/channels/101"
 
-CONFIDENCE = 0.25
+CONFIDENCE = 0.60
 
 print("[INFO] Loading YOLO model...")
 model = YOLO(MODEL_PATH)
@@ -43,8 +43,8 @@ try:
             verbose=False
         )
 
-        # Draw boxes or segmentation masks
-        output = results[0].plot()
+        # Draw segmentation masks without bounding boxes
+        output = results[0].plot(boxes=False)
         frame_count += 1
 
         # Display inference FPS
