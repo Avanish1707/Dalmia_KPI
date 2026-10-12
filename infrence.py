@@ -6,7 +6,7 @@ from ultralytics import YOLO
 MODEL_PATH = r"C:\Users\singh.neeraj\OneDrive - DALMIA BHARAT LIMITED\Desktop\office\Dalmia_KPI\best.pt"  # Change to your model path
 
 # Replace with the actual RTSP URL from your camera
-RTSP_URL = "rtsp://admin:abc123@@192.168.191.40:554/Streaming/channels/101"
+RTSP_URL = "rtsp://admin:abc123!@@192.168.191.40:554/Streaming/channels/101"
 
 CONFIDENCE = 0.25
 
