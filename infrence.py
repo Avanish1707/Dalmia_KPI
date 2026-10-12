@@ -43,6 +43,7 @@ try:
         results = model.predict(
             source=frame,
             conf=CONFIDENCE,
+            imgsz=1240,
             verbose=False
         )
 
