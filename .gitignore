@@ -8,3 +8,9 @@ __pycache__/
 venv/
 env/
 
+# Machine-specific secrets must not be committed.
+configs/*_local.yaml
+
+# Local biometric enrollment images are never pushed to Git.
+ashutosh/
+known_faces/

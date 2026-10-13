@@ -1,18 +1,46 @@
+import argparse
+import time
+from pathlib import Path
+
 import cv2
 import numpy as np
-import time
+import yaml
 from ultralytics import YOLO
 
-# -------- CONFIGURATION --------
-MODEL_PATH = r"C:\Users\singh.neeraj\OneDrive - DALMIA BHARAT LIMITED\Desktop\office\Dalmia_KPI\best.pt"  # Change to your model path
+parser = argparse.ArgumentParser(description="Run a YAML-configured KPI detector.")
+parser.add_argument("--config", default="configs/run_kpi.yaml")
+parser.add_argument("--kpi", default="chair")
+args = parser.parse_args()
+with Path(args.config).open(encoding="utf-8") as config_file:
+    all_config = yaml.safe_load(config_file)
 
-# Replace with the actual RTSP URL from your camera
-RTSP_URL = "rtsp://admin:abc123!@@192.168.191.40:554/Streaming/channels/101"
+CONFIG = all_config["kpis"][args.kpi]
+local_config_path = Path(args.config).with_name("run_kpi_local.yaml")
+if local_config_path.exists():
+    with local_config_path.open(encoding="utf-8") as config_file:
+        local_config = yaml.safe_load(config_file) or {}
+    CONFIG.update(local_config.get("kpis", {}).get(args.kpi, {}))
 
-CONFIDENCE = 0.45
-CHAIR_CONFIDENCE = 0.60
+MODEL_PATH = CONFIG["model_path"]
+RTSP_URL = CONFIG["rtsp_url"]
+CONFIDENCE = float(CONFIG.get("inference", {}).get("confidence", 0.45))
+MASK_THRESHOLD = float(CONFIG.get("inference", {}).get("mask_threshold", 0.5))
+IMAGE_SIZE = int(CONFIG.get("inference", {}).get("image_size", 640))
+CLASS_RULES = CONFIG["classes"]
 
-print("[INFO] Loading YOLO model...")
+
+def normalise_class_name(name):
+    return " ".join(name.lower().replace("_", " ").replace("-", " ").split())
+
+
+def get_rule(class_name):
+    name = normalise_class_name(class_name)
+    for rule in CLASS_RULES.values():
+        if any(normalise_class_name(alias) == name for alias in rule.get("aliases", [])):
+            return rule
+    return None
+
+print(f"[INFO] Loading YOLO model for KPI: {CONFIG['name']}")
 model = YOLO(MODEL_PATH)
 print("[INFO] Model loaded successfully.")
 print(f"[INFO] Model classes: {model.names}")
@@ -43,14 +71,14 @@ try:
         results = model.predict(
             source=frame,
             conf=CONFIDENCE,
-            imgsz=640,
+            imgsz=IMAGE_SIZE,
             verbose=False
         )
 
         # Fill small gaps in each mask and draw masks without bounding boxes.
         result = results[0]
         output = frame.copy()
-        chair_states = {}
+        states = {}
 
         if result.masks is not None and result.boxes is not None:
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -60,18 +88,14 @@ try:
 
             for mask, class_id, confidence in zip(masks, class_ids, confidences):
                 class_name = str(model.names[class_id]).strip()
-                normalized_name = class_name.lower()
-                has_person = "person" in normalized_name
-                has_chair = "chair" in normalized_name
-                has_without = "without" in normalized_name
-                is_person_with_chair = has_person and has_chair and not has_without
-
-                if is_person_with_chair and confidence < CHAIR_CONFIDENCE:
+                rule = get_rule(class_name)
+                if rule is None or confidence < float(rule.get("min_confidence", CONFIDENCE)):
                     continue
 
-                if is_person_with_chair:
-                    chair_states[class_name] = max(
-                        chair_states.get(class_name, 0.0), float(confidence)
+                state_name = rule.get("state")
+                if state_name:
+                    states[state_name] = max(
+                        states.get(state_name, 0.0), float(confidence)
                     )
 
                 mask = cv2.resize(
@@ -79,7 +103,7 @@ try:
                     (frame.shape[1], frame.shape[0]),
                     interpolation=cv2.INTER_NEAREST,
                 )
-                binary_mask = (mask > 0.5).astype(np.uint8) * 255
+                binary_mask = (mask > MASK_THRESHOLD).astype(np.uint8) * 255
                 binary_mask = cv2.morphologyEx(
                     binary_mask, cv2.MORPH_CLOSE, kernel
                 )
@@ -88,18 +112,14 @@ try:
                 if not np.any(mask_area):
                     continue
 
-                color = (
-                    (255, 160, 0)
-                    if has_without
-                    else (0, 200, 0) if is_person_with_chair else (255, 160, 0)
-                )
+                color = tuple(int(value) for value in rule.get("color_bgr", [0, 200, 0]))
                 output[mask_area] = (
                     output[mask_area].astype(np.float32) * 0.55
                     + np.asarray(color, dtype=np.float32) * 0.45
                 ).astype(np.uint8)
 
                 ys, xs = np.where(mask_area)
-                label = f"{class_name} {confidence:.2f}"
+                label = f"{rule.get('label', class_name)} {confidence:.2f}"
                 cv2.putText(
                     output,
                     label,
@@ -112,11 +132,11 @@ try:
 
         status_text = (
             " | ".join(
-                f"{class_name} ({confidence:.2f})"
-                for class_name, confidence in chair_states.items()
+                f"{state_name} ({confidence:.2f})"
+                for state_name, confidence in states.items()
             )
-            if chair_states
-            else "Chair status: Not detected"
+            if states
+            else CONFIG.get("empty_status", "No configured state detected")
         )
         cv2.putText(
             output,
@@ -143,7 +163,7 @@ try:
             2
         )
 
-        cv2.imshow("RTSP Live Model Test", output)
+        cv2.imshow(CONFIG.get("window_name", CONFIG["name"]), output)
 
         # Press Q to stop
         if cv2.waitKey(1) & 0xFF == ord("q"):

@@ -1,0 +1,56 @@
+# Edit this file, then run: python run_kpi.py
+# Keep real camera/database values in the ignored configs/run_kpi_local.yaml.
+# That file can override values under kpis.chair or kpis.face.
+active_kpi: face
+
+kpis:
+  chair:
+    script: infrence.py
+    name: chair_occupancy
+    window_name: Chair occupancy KPI
+    model_path: best.pt
+    rtsp_url: "rtsp://CAMERA_IP:554/Streaming/channels/101"
+    inference:
+      confidence: 0.45
+      image_size: 640
+      mask_threshold: 0.50
+    classes:
+      occupied_chair:
+        aliases: ["person with chair", "person_with_chair"]
+        label: "Chair occupied"
+        state: "Chair occupied"
+        min_confidence: 0.60
+        color_bgr: [0, 200, 0]
+      unoccupied_chair:
+        aliases: ["person without chair", "person_without_chair", "chair without person"]
+        label: "Chair unoccupied"
+        state: "Chair unoccupied"
+        min_confidence: 0.45
+        color_bgr: [0, 160, 255]
+    empty_status: "Chair status: Not detected"
+
+  face:
+    script: face_identity_kpi.py
+    name: known_unknown_face
+    window_name: Known / unknown person KPI
+    rtsp_url: "rtsp://CAMERA_IP:554/Streaming/channels/101"
+    face_model:
+      name: buffalo_l
+      ctx_id: -1
+      providers: [CPUExecutionProvider]
+      det_size: [640, 640]
+    database:
+      host: CHANGE_ME
+      port: 5432
+      dbname: CHANGE_ME
+      user: CHANGE_ME
+      password: CHANGE_ME
+      schema_path: sql/face_identity_schema.sql
+    enrollment:
+      photos_directory: ashutosh
+      person_code: ASHUTOSH
+      display_name: Ashutosh
+      minimum_detection_score: 0.80
+    recognition:
+      match_threshold: 0.45
+    args: [--mode, run]
